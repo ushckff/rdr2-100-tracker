@@ -51,9 +51,11 @@
   <main>
     <div class="controls">
       <input type="search" id="q" placeholder="Поиск: «гуарма», «револьвер», «хедшот»…" autocomplete="off" aria-label="Поиск по пунктам">
-      <button class="chip" id="fTodo">Только невыполненные</button>
-      <button class="chip" id="fMiss">Только пропускаемые</button>
-      <button class="chip" id="fSpoil">Открыть все спойлеры</button>
+      <div class="chips">
+        <button class="chip" id="fTodo">Невыполненные</button>
+        <button class="chip" id="fMiss">Пропускаемые</button>
+        <button class="chip" id="fSpoil">Спойлеры</button>
+      </div>
     </div>
     <div id="content"></div>
     <footer>
@@ -61,6 +63,13 @@
       <p>Числа и списки сверены по открытым гайдам (PowerPyx, Red Dead Wiki, RDR2.org, GTABase). Единственный источник истины — внутриигровое меню <b>Прогресс → Общее завершение</b>, компендиум и список миссий.</p>
     </footer>
   </main>
+</div>
+
+<!-- переключатель разделов, виден только на узком экране -->
+<div class="secnav" id="secnav">
+  <button id="prevSec" aria-label="Предыдущий раздел">‹</button>
+  <button id="secPick"><span id="secName">Раздел</span></button>
+  <button id="nextSec" aria-label="Следующий раздел">›</button>
 </div>
 
 <button class="totop" id="totop" aria-label="Наверх">↑</button>
@@ -98,8 +107,9 @@
 
 <!-- данные разделов: каждый файл добавляет свои секции в window.RDR2_SECTIONS -->
 <script src="data-guide.js"></script>
-<script src="data-hundred.js"></script>
+<!-- data-missions.js добавляет миссии внутрь глав из data-guide.js, поэтому идёт сразу за ним -->
 <script src="data-missions.js"></script>
+<script src="data-hundred.js"></script>
 <script src="data-trophies.js"></script>
 <script src="data-challenges.js"></script>
 <script src="data-compendium.js"></script>

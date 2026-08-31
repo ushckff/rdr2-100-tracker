@@ -2,6 +2,9 @@
    app.js — сборка страницы и все обработчики
    Данные приходят из data-*.js, состояние из store.js,
    разметка из render.js. Авторизация подключается отдельно (auth.js).
+
+   На узком экране включается режим «одна вкладка за раз»: разделы
+   не идут одной бесконечной лентой, а переключаются меню снизу.
    ============================================================ */
 window.App = (function(){
   "use strict";
@@ -10,33 +13,61 @@ window.App = (function(){
   var ITEMS    = window.Render.indexItems(SECTIONS);
   var HAY      = window.Render.buildIndex(SECTIONS);
   var FKEY     = "rdr2-tracker-filters";
+  var GKEY     = "rdr2-tracker-groups";
+  var SKEY     = "rdr2-tracker-section";
 
   var content = document.getElementById("content");
   var nav     = document.getElementById("nav");
+  var mq      = window.matchMedia("(max-width: 1000px)");
 
   var filters = { todo:false, miss:false, q:"", spoil:false };
-  try { Object.assign(filters, JSON.parse(localStorage.getItem(FKEY) || "{}")); } catch(e){}
-  filters.q = "";
+  var groupOverride = {};
+  var current = SECTIONS[0] ? SECTIONS[0].id : "";
 
-  function saveFilters(){
-    try { localStorage.setItem(FKEY, JSON.stringify({todo:filters.todo, miss:filters.miss, spoil:filters.spoil})); } catch(e){}
+  function readLS(key, fallback){
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch(e){ return fallback; }
   }
+  function writeLS(key, value){ try { localStorage.setItem(key, JSON.stringify(value)); } catch(e){} }
+
+  Object.assign(filters, readLS(FKEY, {}));
+  filters.q = "";
+  groupOverride = readLS(GKEY, {});
+  var savedSection = localStorage.getItem(SKEY);
+  if (savedSection && SECTIONS.some(function(s){ return s.id === savedSection; })) current = savedSection;
+
+  function isMobile(){ return mq.matches; }
+  function searching(){ return !!(filters.q.trim() || filters.todo || filters.miss); }
 
   /* ---------- отрисовка ---------- */
   function renderAll(){
     var state = window.Store.all();
-    content.innerHTML = SECTIONS.map(function(s){ return window.Render.sectionHtml(s, state); }).join("");
+    var opts = { foldNotes: isMobile(), closeGroups: isMobile() };
+    content.innerHTML = SECTIONS.map(function(s){ return window.Render.sectionHtml(s, state, opts); }).join("");
     nav.innerHTML = window.Render.navHtml(SECTIONS, state);
+    applyGroupOverrides();
     if (filters.spoil) revealAll(true);
+    syncMode();
     applyFilters();
+    refreshMeters();
+  }
+
+  function applyGroupOverrides(){
+    Object.keys(groupOverride).forEach(function(key){
+      var g = content.querySelector('[data-grp="' + CSS.escape(key) + '"]');
+      if (!g) return;
+      var open = groupOverride[key];
+      g.classList.toggle("closed", !open);
+      var h = g.querySelector(".grp-h");
+      if (h) h.setAttribute("aria-expanded", open ? "true" : "false");
+    });
   }
 
   function refreshMeters(){
     var state = window.Store.all();
     var g = window.Render.globalStats(SECTIONS, state);
     var label = Math.round(g.done) + " / " + g.total + " · " + g.pct + "%";
-    ["gpct","gpctM"].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent = label; });
-    ["gfill","gfillM"].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.width = g.pct + "%"; });
+    ["gpct","gpctM"].forEach(function(id){ var el = document.getElementById(id); if (el) el.textContent = label; });
+    ["gfill","gfillM"].forEach(function(id){ var el = document.getElementById(id); if (el) el.style.width = g.pct + "%"; });
 
     SECTIONS.forEach(function(s){
       var st = window.Render.sectionStats(s, state);
@@ -49,8 +80,22 @@ window.App = (function(){
       var a = document.querySelector('[data-nav="' + s.id + '"]');
       if (a){
         a.querySelector(".pct").textContent = st.total ? st.pct + "%" : "";
-        a.classList.toggle("done", st.pct === 100);
+        a.classList.toggle("done", st.total > 0 && st.pct === 100);
       }
+      (s.groups || []).forEach(function(gr, i){
+        var key = s.id + ":" + i;
+        var el = document.querySelector('[data-grp-lbl="' + CSS.escape(key) + '"]');
+        if (el){
+          var gs = window.Render.groupStats(gr, state);
+          el.textContent = Math.round(gs.done) + "/" + gs.total;
+          el.classList.toggle("full", gs.total > 0 && gs.done >= gs.total);
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-stat]").forEach(function(box){
+      var n = window.Render.prefixCount(SECTIONS, state, box.dataset.stat);
+      box.querySelector("b").textContent = n;
     });
   }
 
@@ -65,13 +110,51 @@ window.App = (function(){
     return fresh;
   }
 
+  /* ---------- режим «одна вкладка» на телефоне ---------- */
+  var secName = document.getElementById("secName");
+
+  function syncMode(){
+    var single = isMobile() && !searching();
+    document.body.classList.toggle("single", single);
+    if (single) showSection(current, true);
+    else content.querySelectorAll("section.sec").forEach(function(s){ s.classList.remove("current"); });
+    updateSecNav();
+  }
+
+  function showSection(id, silent){
+    current = id;
+    localStorage.setItem(SKEY, id);
+    content.querySelectorAll("section.sec").forEach(function(s){
+      s.classList.toggle("current", s.id === id);
+    });
+    document.querySelectorAll("[data-nav]").forEach(function(a){ a.classList.toggle("on", a.dataset.nav === id); });
+    updateSecNav();
+    if (!silent) window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function updateSecNav(){
+    var s = SECTIONS.filter(function(x){ return x.id === current; })[0];
+    if (secName && s) secName.textContent = s.nav || s.title;
+    var i = SECTIONS.findIndex(function(x){ return x.id === current; });
+    var prev = document.getElementById("prevSec"), next = document.getElementById("nextSec");
+    if (prev) prev.disabled = i <= 0;
+    if (next) next.disabled = i < 0 || i >= SECTIONS.length - 1;
+  }
+
+  function step(delta){
+    var i = SECTIONS.findIndex(function(x){ return x.id === current; });
+    var j = i + delta;
+    if (j < 0 || j >= SECTIONS.length) return;
+    showSection(SECTIONS[j].id);
+  }
+
   /* ---------- фильтры ---------- */
   function applyFilters(){
     var q = filters.q.trim().toLowerCase();
     var state = window.Store.all();
-    var anyFilter = filters.todo || filters.miss || q;
+    var anyFilter = searching();
 
-    document.querySelectorAll("section.sec").forEach(function(sec){
+    content.querySelectorAll("section.sec").forEach(function(sec){
       var shown = 0, has = false;
       sec.querySelectorAll("li.it").forEach(function(li){
         has = true;
@@ -86,7 +169,10 @@ window.App = (function(){
       });
       sec.querySelectorAll(".grp").forEach(function(g){
         var total = g.querySelectorAll("li.it").length;
-        g.hidden = total > 0 && g.querySelectorAll("li.it:not(.hide)").length === 0;
+        var vis = g.querySelectorAll("li.it:not(.hide)").length;
+        g.hidden = total > 0 && vis === 0;
+        // при активном поиске группы раскрываются, чтобы результат было видно
+        if (anyFilter && vis > 0) g.classList.remove("closed");
       });
       var em = sec.querySelector(".empty");
       if (em) em.hidden = !(has && shown === 0);
@@ -101,30 +187,42 @@ window.App = (function(){
 
   /* ---------- события внутри контента ---------- */
   content.addEventListener("click", function(e){
+    var more = e.target.closest("[data-morenotes]");
+    if (more){ more.closest(".notes").classList.remove("folded"); more.remove(); return; }
+
+    var head = e.target.closest(".grp-h");
+    if (head){
+      var grp = head.closest(".grp");
+      var open = grp.classList.toggle("closed") === false;
+      head.setAttribute("aria-expanded", open ? "true" : "false");
+      groupOverride[grp.dataset.grp] = open;
+      writeLS(GKEY, groupOverride);
+      return;
+    }
+
     var reveal = e.target.closest("[data-reveal]");
     if (reveal){
       var sec = document.getElementById(reveal.dataset.reveal);
       var opened = reveal.classList.toggle("on");
       sec.querySelectorAll(".sp").forEach(function(s){ s.classList.toggle("open", opened); });
-      reveal.textContent = opened ? "Скрыть названия миссий" : "Раскрыть названия миссий";
+      reveal.textContent = opened ? "Скрыть спойлеры раздела" : "Раскрыть спойлеры раздела";
       return;
     }
 
     var sp = e.target.closest(".sp");
     if (sp && !sp.classList.contains("open")){ sp.classList.add("open"); return; }
-    if (sp) return;                                  // открытый спойлер — обычный текст
+    if (sp) return;
 
     var li = e.target.closest("li.it");
     if (!li) return;
     var it = ITEMS[li.dataset.id];
     if (!it) return;
 
-    // если человек выделял текст — это не отметка пункта
     var selection = window.getSelection && window.getSelection();
     if (selection && String(selection).length > 0 && !e.target.closest("[data-act]")) return;
 
     var btn = e.target.closest("[data-act]");
-    var act = btn ? btn.dataset.act : "toggle";      // клик по строке = переключение
+    var act = btn ? btn.dataset.act : "toggle";
 
     if (act === "plus")       window.Store.bump(it, 1);
     else if (act === "minus") window.Store.bump(it, -1);
@@ -135,21 +233,25 @@ window.App = (function(){
     applyFilters();
   });
 
-  /* спойлер с клавиатуры */
   content.addEventListener("keydown", function(e){
     if (e.key !== "Enter" && e.key !== " ") return;
-    var sp = e.target.closest(".sp");
-    if (sp){ e.preventDefault(); sp.classList.add("open"); }
+    var target = e.target.closest(".sp, .grp-h");
+    if (!target) return;
+    e.preventDefault();
+    target.click();
   });
 
-  /* двойной клик по спойлеру не должен выделять текст под ним */
   content.addEventListener("mousedown", function(e){
     if (e.detail > 1 && e.target.closest(".sp:not(.open)")) e.preventDefault();
   });
 
   /* ---------- панель управления ---------- */
-  document.getElementById("q").addEventListener("input", function(e){
-    filters.q = e.target.value; applyFilters();
+  var qInput = document.getElementById("q");
+  var qTimer = null;
+  qInput.addEventListener("input", function(e){
+    filters.q = e.target.value;
+    clearTimeout(qTimer);
+    qTimer = setTimeout(function(){ syncMode(); applyFilters(); }, 120);
   });
   function bindChip(id, key, onToggle){
     var el = document.getElementById(id);
@@ -157,15 +259,16 @@ window.App = (function(){
     el.addEventListener("click", function(){
       filters[key] = !filters[key];
       el.classList.toggle("on", filters[key]);
-      saveFilters();
-      if (onToggle) onToggle(filters[key]); else applyFilters();
+      writeLS(FKEY, { todo:filters.todo, miss:filters.miss, spoil:filters.spoil });
+      if (onToggle) onToggle(filters[key]);
+      else { syncMode(); applyFilters(); }
     });
   }
   bindChip("fTodo","todo");
   bindChip("fMiss","miss");
   bindChip("fSpoil","spoil", function(on){ revealAll(on); });
 
-  /* ---------- мобильное меню ---------- */
+  /* ---------- меню разделов ---------- */
   var burger = document.getElementById("burger");
   var scrim  = document.getElementById("scrim");
   function setNav(open){
@@ -174,8 +277,26 @@ window.App = (function(){
   }
   burger.addEventListener("click", function(){ setNav(!document.body.classList.contains("nav-open")); });
   scrim.addEventListener("click", function(){ setNav(false); });
-  nav.addEventListener("click", function(e){ if (e.target.closest("a")) setNav(false); });
   document.addEventListener("keydown", function(e){ if (e.key === "Escape") setNav(false); });
+
+  nav.addEventListener("click", function(e){
+    var a = e.target.closest("a[data-nav]");
+    if (!a) return;
+    setNav(false);
+    if (document.body.classList.contains("single")){
+      e.preventDefault();
+      showSection(a.dataset.nav);
+    }
+  });
+
+  var prevBtn = document.getElementById("prevSec");
+  var nextBtn = document.getElementById("nextSec");
+  var pickBtn = document.getElementById("secPick");
+  if (prevBtn) prevBtn.addEventListener("click", function(){ step(-1); });
+  if (nextBtn) nextBtn.addEventListener("click", function(){ step(1); });
+  if (pickBtn) pickBtn.addEventListener("click", function(){ setNav(true); });
+
+  mq.addEventListener("change", function(){ renderAll(); });
 
   /* ---------- наверх и подсветка раздела ---------- */
   var totop = document.getElementById("totop");
@@ -187,13 +308,14 @@ window.App = (function(){
     requestAnimationFrame(function(){
       ticking = false;
       totop.classList.toggle("on", window.scrollY > 700);
+      if (document.body.classList.contains("single")) return;
       var best = null, bd = 1e9;
-      document.querySelectorAll("section.sec").forEach(function(s){
+      content.querySelectorAll("section.sec").forEach(function(s){
         if (s.hidden) return;
         var d = Math.abs(s.getBoundingClientRect().top - 90);
         if (d < bd){ bd = d; best = s.id; }
       });
-      document.querySelectorAll("[data-nav]").forEach(function(a){ a.classList.toggle("on", a.dataset.nav === best); });
+      if (best) document.querySelectorAll("[data-nav]").forEach(function(a){ a.classList.toggle("on", a.dataset.nav === best); });
     });
   }, {passive:true});
 
@@ -274,7 +396,6 @@ window.App = (function(){
     if (a === "signout" && window.Auth && window.Auth.signOut) window.Auth.signOut();
   });
 
-  /* auth.js вызывает это после каждой смены состояния входа */
   function refreshAccount(){
     var u = window.Auth && window.Auth.user;
     if (u){
@@ -292,15 +413,12 @@ window.App = (function(){
   /* ---------- запуск ---------- */
   window.Store.init();
   renderAll();
-  refreshMeters();
 
   var rerenderTimer = null;
   window.Store.subscribe(function(state, source){
-    // локальные клики уже перерисовали свой пункт — полная перерисовка нужна
-    // только когда состояние пришло целиком: из облака, импорта или сброса
     if (source !== "external") return;
     clearTimeout(rerenderTimer);
-    rerenderTimer = setTimeout(function(){ renderAll(); refreshMeters(); }, 30);
+    rerenderTimer = setTimeout(renderAll, 30);
   });
 
   return {
@@ -309,6 +427,7 @@ window.App = (function(){
     render: renderAll,
     refresh: refreshMeters,
     refreshAccount: refreshAccount,
+    showSection: showSection,
     exportJson: exportJson,
     importJson: importJson,
     resetAll: resetAll

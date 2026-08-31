@@ -144,7 +144,8 @@ nav.side a.done .pct{color:var(--ok)}
 .scrim{display:none}
 
 /* ---------- управление ---------- */
-.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.chips{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
 .controls input[type=search]{
   flex:1 1 220px;min-width:180px;background:var(--bg2);border:1px solid var(--line);
   border-radius:8px;padding:10px 12px;color:var(--tx);font:inherit;
@@ -178,11 +179,38 @@ section.sec{margin-bottom:40px;scroll-margin-top:calc(var(--head-h) + 14px)}
 .grp{margin:0 0 18px}
 .grp > h3{
   font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);
-  margin:22px 0 9px;display:flex;align-items:center;gap:10px;
+  margin:22px 0 9px;display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;
+  padding:6px 8px;margin-left:-8px;margin-right:-8px;border-radius:9px;
 }
-.grp > h3 .cnt{font-family:inherit;font-size:11px;color:var(--tx3);letter-spacing:0;text-transform:none}
-.grp > h3::after{content:"";flex:1;height:1px;background:var(--line)}
-.grp > p.gd{margin:-4px 0 10px;color:var(--tx2);font-size:13px}
+.grp > h3:hover{background:var(--bg2)}
+.grp > h3 .gh{flex:0 1 auto;min-width:0}
+.grp > h3 .cnt{font-family:inherit;font-size:11px;color:var(--tx3);letter-spacing:0;text-transform:none;white-space:nowrap}
+.grp > h3 .gp{
+  margin-left:auto;font-family:inherit;font-size:11.5px;letter-spacing:0;text-transform:none;
+  color:var(--tx3);font-variant-numeric:tabular-nums;background:var(--bg3);
+  border:1px solid var(--line);border-radius:99px;padding:2px 9px;white-space:nowrap;
+}
+.grp > h3 .gp.full{color:var(--ok);border-color:#3d4a2c;background:rgba(126,155,82,.12)}
+.grp > h3 .chev{width:15px;height:15px;flex:0 0 15px;color:var(--tx3);transform:rotate(90deg);transition:transform .15s}
+.grp.closed > h3 .chev{transform:none}
+.grp.closed .grp-body{display:none}
+.grp > p.gd{margin:-2px 0 10px;color:var(--tx2);font-size:13px}
+
+/* сводка по золотым медалям */
+.statbox{
+  display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+  background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 15px;margin:0 0 16px;
+}
+.statbox b{font-family:Georgia,serif;font-size:24px;color:var(--gold2);font-variant-numeric:tabular-nums}
+.statbox span{color:var(--tx2);font-size:13px;margin-left:4px}
+
+/* сворачиваемые подсказки */
+.notes.folded .note.extra{display:none}
+.morenotes{
+  background:none;border:0;color:var(--gold2);font-size:13px;
+  padding:4px 0 10px;text-decoration:underline;
+}
 
 /* ---------- пункты ---------- */
 ul.items{list-style:none;margin:0;padding:0;display:grid;gap:6px}
@@ -251,6 +279,28 @@ footer a{color:#9d8358}
 }
 .totop.on{display:grid}
 
+/* ---------- режим «одна вкладка за раз» ---------- */
+body.single section.sec{display:none}
+body.single section.sec.current{display:block;margin-bottom:16px}
+body.single .layout{padding-bottom:96px}
+
+.secnav{
+  display:none;position:fixed;left:0;right:0;bottom:0;z-index:55;
+  gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+  background:rgba(18,16,13,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);
+}
+body.single .secnav{display:flex}
+.secnav button{
+  background:var(--bg3);border:1px solid var(--line);border-radius:11px;
+  color:var(--tx2);height:44px;padding:0 14px;font-size:19px;line-height:1;
+}
+.secnav button:disabled{opacity:.35}
+.secnav #secPick{
+  flex:1;font-size:14px;font-family:Georgia,serif;color:var(--tx);
+  display:flex;align-items:center;justify-content:center;gap:8px;overflow:hidden;
+}
+.secnav #secPick span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* тонкая полоса прогресса под шапкой — только на телефоне */
 .mobile-progress{display:none;padding:0 0 8px}
 .mobile-progress .lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--tx2);margin-bottom:5px}
@@ -287,15 +337,31 @@ footer a{color:#9d8358}
   .sync{display:none}
   .mobile-progress{display:block}
   .layout{padding:14px 0 80px}
-  .controls{gap:7px;margin-bottom:14px}
-  .controls input[type=search]{flex:1 1 100%;font-size:16px}
-  .chip{padding:9px 13px;font-size:12.5px}
+  .controls{gap:8px;margin-bottom:12px}
+  .controls input[type=search]{flex:1 1 100%;font-size:16px;padding:9px 12px}
+  .chips{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{padding:8px 14px;font-size:13px;white-space:nowrap;flex:0 0 auto}
   .sechead h2{font-size:20px}
   .sechead p{font-size:13px}
-  li.it{padding:12px;gap:10px;border-radius:12px}
+  li.it{padding:11px 12px;gap:10px;border-radius:12px}
   .cb{flex-basis:22px;width:22px;height:22px}
-  .t{font-size:14.5px}
+  .t{font-size:14.5px;line-height:1.4}
+  .d,.t .en,ul.req li{font-size:12.5px}
   .ctr button{width:34px;height:34px}
+  .note{padding:12px 13px;font-size:13px;border-radius:12px;margin-bottom:10px}
+  .note ul{padding-left:16px}
+  .sechead{padding-bottom:10px;margin-bottom:12px}
+  .sechead p{font-size:12.5px}
+  .grp > h3{margin:14px -8px 8px;font-size:14.5px;text-transform:none;letter-spacing:0;
+    font-family:Georgia,"Times New Roman",serif;background:var(--bg2);border:1px solid var(--line)}
+  .grp > h3 .cnt{display:none}
+  .grp > h3 .gp{font-size:11px;padding:2px 8px}
+  .grp{margin-bottom:12px}
+  ul.items{gap:5px}
+  .statbox{padding:11px 13px}
+  .statbox b{font-size:20px}
+  .totop{bottom:calc(72px + env(safe-area-inset-bottom))}
   .menu{position:fixed;left:13px;right:13px;top:auto;bottom:calc(14px + env(safe-area-inset-bottom));min-width:0}
   .modal{padding:20px}
   .totop{right:12px;bottom:calc(12px + env(safe-area-inset-bottom))}
