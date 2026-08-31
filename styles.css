@@ -51,7 +51,7 @@ header.top{
   background:rgba(18,16,13,.94);backdrop-filter:blur(8px);
   border-bottom:1px solid var(--line);
 }
-.top-in{display:flex;align-items:center;gap:14px;padding:10px 0;min-height:var(--head-h)}
+.top-in{display:flex;align-items:center;gap:14px;padding-block:10px;min-height:var(--head-h)}
 .burger{display:none;background:none;border:0;padding:6px;margin-left:-6px;color:var(--tx2)}
 .burger svg{width:22px;height:22px;display:block}
 .brand{display:flex;align-items:center;gap:10px;min-width:0;flex:0 1 auto}
@@ -130,7 +130,7 @@ header.top{
 .modal .close{position:absolute;top:12px;right:12px}
 
 /* ---------- раскладка ---------- */
-.layout{display:grid;grid-template-columns:246px 1fr;gap:26px;align-items:start;padding:22px 0 90px}
+.layout{display:grid;grid-template-columns:246px 1fr;gap:26px;align-items:start;padding-top:22px;padding-bottom:90px}
 nav.side{position:sticky;top:calc(var(--head-h) + 8px);max-height:calc(100vh - var(--head-h) - 26px);overflow:auto}
 nav.side .navgroup{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin:16px 0 6px 10px}
 nav.side a{
@@ -326,8 +326,8 @@ body.single .secnav{display:flex}
 /* ---------- телефон ---------- */
 @media (max-width:720px){
   :root{--head-h:52px}
-  .wrap{padding:0 13px}
-  .top-in{gap:10px;padding:8px 0}
+  .wrap{padding:0 14px}
+  .top-in{gap:10px;padding-block:8px}
   .brand .mark{width:30px;height:30px;flex-basis:30px;font-size:13px}
   .brand h1{font-size:15px}
   .brand small{display:none}
@@ -336,7 +336,7 @@ body.single .secnav{display:flex}
   .acct-btn{padding:5px;border-radius:50%}
   .sync{display:none}
   .mobile-progress{display:block}
-  .layout{padding:14px 0 80px}
+  .layout{padding-top:14px;padding-bottom:80px}
   .controls{gap:8px;margin-bottom:12px}
   .controls input[type=search]{flex:1 1 100%;font-size:16px;padding:9px 12px}
   .chips{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
@@ -353,7 +353,7 @@ body.single .secnav{display:flex}
   .note ul{padding-left:16px}
   .sechead{padding-bottom:10px;margin-bottom:12px}
   .sechead p{font-size:12.5px}
-  .grp > h3{margin:14px -8px 8px;font-size:14.5px;text-transform:none;letter-spacing:0;
+  .grp > h3{margin:14px 0 8px;padding:9px 12px;font-size:14.5px;text-transform:none;letter-spacing:0;
     font-family:Georgia,"Times New Roman",serif;background:var(--bg2);border:1px solid var(--line)}
   .grp > h3 .cnt{display:none}
   .grp > h3 .gp{font-size:11px;padding:2px 8px}
